@@ -1,4 +1,15 @@
 # Intro to Git Github
 # Top-Down Design
-- Jun 16-17 2024
-- 8:30 - 9:50
+Console gradebook interface.
+Our first team GitHub project in UCU.
+
+### Participants
+* Ivan Zarytskyi
+* Roman Leshchuk
+* Vladyslav Danylyshyn
+* Deputat Anton
+* Kopach Taras
+* Lykhanskyi Oleksandr
+* Bugir Yelyzaveta
+* Vladyslav Bobryk
+* Zakhar Veresniuk
