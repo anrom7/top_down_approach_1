@@ -88,6 +88,43 @@ def get_proper_student_grade(data: grade_book_type, syllabus: dict[str, dict[str
     return output
 
 
+def add_activity(syllabus: dict[str, dict[str, float]], activity_group: str, activity: str, max_grade: float) -> dict[str, dict[str, float]]:
+    '''
+    Adds a new activity to the syllabus or ignores an existing activity 
+    if the activity group and activity already exist in the syllabus.
+
+    :param syllabus: dict[str, dict[str, float]], The dictionary that contains activity groups 
+        as keys and nested dictionaries as values.
+    :param activity_group: str, The name of the activity group.
+    :param activity: str, The name of activity.
+    :param max_grade: float, The maximum grade for the activity.
+
+    :return: dict[str, dict[str, float]], The result syllabus.
+
+    >>> add_activity({'ПКН23-А': {'Мідтерм 2023': 10}, \
+                      'ПКН24-В': {'treasure': 1}}, \
+                      'ПКН24-Б', 'Tower blocks', 1)
+    {'ПКН23-А': {'Мідтерм 2023': 10}, \
+'ПКН24-В': {'treasure': 1}, \
+'ПКН24-Б': {'Tower blocks': 1}}
+    >>> add_activity({'ПКН23-А': {'Мідтерм 2023': 10}, \
+                      'ПКН24-В': {'treasure': 1}}, \
+                      'ПКН24-В', 'Tower blocks', 1)
+    {'ПКН23-А': {'Мідтерм 2023': 10}, \
+'ПКН24-В': {'treasure': 1, 'Tower blocks': 1}}
+    >>> add_activity({'ПКН23-А': {'Мідтерм 2023': 10}, \
+                      'ПКН24-В': {'treasure': 1}}, \
+                      'ПКН24-В', 'treasure', 0)
+    {'ПКН23-А': {'Мідтерм 2023': 10}, \
+'ПКН24-В': {'treasure': 1}}
+    '''
+    if not activity_group in syllabus:
+        syllabus[activity_group] = {}
+    if not activity in syllabus[activity_group]:
+        syllabus[activity_group][activity] = max_grade
+
+    return syllabus
+
 def write_json(filename: str, data: grade_book_type, syllabus: dict[str, dict[str, float]]):
     """
     Writes the all students' grades json file.
@@ -709,6 +746,11 @@ def main():
             2,
             "Видаляє активність з силабуса та журналу оцінок для кожного студента \
 у форматі (група, активність)"
+        ),
+        "add_activity": (
+            lambda args: add_activity(syllabus, args[0], args[1], float(args[2])),
+            3,
+            "Додає активність в силабус за групою активності, назвою та максимальним балом"
         )
     }
 
