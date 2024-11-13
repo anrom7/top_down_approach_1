@@ -7,33 +7,32 @@ from collections import defaultdict
 grade_book_type = dict[tuple[str, str, str, str], dict[str, dict[str, float | None]]]
 
 
-def get_activities(activities: list) -> set[tuple[str, str]]:
+def get_activities(syllabus: dict[str, dict[str, float]]) -> set[tuple[str, str]]:
     """
     Arranges groups of activities
 
     :param activities: list, all activities
     :return: set, groups of activities
 
-    >>> get_activities([{'Лабораторні роботи': {'Лабораторна робота 1': 1.5},
-    ... 'Семінари': {'Семінар 1': 4.5, 'Семінар 2': 6}},
-    ... {'Лабораторні роботи': {'Лабораторна робота 2': 2.0}},
-    ... {'Лабораторні роботи': {'Лабораторна робота 1': 0.5}},
-    ... {'Лабораторні роботи': {'Лабораторна робота 1': 0.0}},
-    ... {'Лабораторні роботи': {'Лабораторна робота 1': 2.0}}]) == {('Семінари', 'Семінар 1'),
+    >>> get_activities({'Лабораторні роботи': {'Лабораторна робота 1': 1.5},
+    ... 'Семінари': {'Семінар 1': 4.5, 'Семінар 2': 6},
+    ... 'Лабораторні роботи': {
+    ...     'Лабораторна робота 1': 2.0,
+    ...     'Лабораторна робота 2': 0.5
+    ... }}) == {('Семінари', 'Семінар 1'),
     ... ('Лабораторні роботи', 'Лабораторна робота 2'),
     ... ('Семінари', 'Семінар 2'), ('Лабораторні роботи', 'Лабораторна робота 1')}
     True
     """
     output = []
-    for d in activities:
-        for group in d:
-            for activity in d[group]:
-                output += [(group, activity)]
+    for group in syllabus:
+        for activity in syllabus[group]:
+            output += [(group, activity)]
 
     return set(output)
 
 
-def get_proper_student_grade(data: grade_book_type) \
+def get_proper_student_grade(data: grade_book_type, syllabus: dict[str, dict[str, float]]) \
         -> dict[str, dict[str, dict[str, float | None]]]:
     """
     Makes a dictionary for all types of grades for each student
@@ -41,11 +40,20 @@ def get_proper_student_grade(data: grade_book_type) \
     :param data: dict, dictionary of all grades
     :return: dict, dictionary for all types of grades for each student.
 
-    >>> get_proper_student_grade({('Фединяк', 'Степан', 'fedeniak.pn@ucu.edu.ua', 'ПКН24-Б1'): \
-{'Лабораторні роботи': {'Лабораторна робота 1': 1.5},\
-'Семінари': {'Семінар 1': 4.5, 'Семінар 2': 6}},\
+    >>> get_proper_student_grade({\
+    ('Фединяк', 'Степан', 'fedeniak.pn@ucu.edu.ua', 'ПКН24-Б1'): \
+{\
+'Лабораторні роботи': {'Лабораторна робота 1': 1.5},\
+'Семінари': {'Семінар 1': 4.5, 'Семінар 2': 6}\
+},\
 ('Фаренюк', 'Олег', 'fareniuk.pn@ucu.edu.ua', 'ПКН24-Б1'):\
-{'Лабораторні роботи': {'Лабораторна робота 2': 2.0}}}) == \
+{\
+'Лабораторні роботи': {'Лабораторна робота 2': 2.0}}\
+}, \
+{\
+'Семінари': {'Семінар 1': 6.0, 'Семінар 2': 6.0},\
+'Лабораторні роботи': {'Лабораторна робота 1': 1.5, 'Лабораторна робота 2': 2.0}\
+}) == \
 {'Фединяк, Степан, fedeniak.pn@ucu.edu.ua, ПКН24-Б1': \
 {'Семінари': {'Семінар 1': 4.5, 'Семінар 2': 6}, 'Лабораторні роботи': \
 {'Лабораторна робота 1': 1.5, 'Лабораторна робота 2': None}}, \
@@ -59,7 +67,7 @@ def get_proper_student_grade(data: grade_book_type) \
         return x[1]
 
     student_info, grades = list(data.keys()), list(data.values())
-    all_activities = get_activities(grades)
+    all_activities = get_activities(syllabus)
 
     output = {}
     for student in student_info:
@@ -80,7 +88,44 @@ def get_proper_student_grade(data: grade_book_type) \
     return output
 
 
-def write_json(filename: str, data: grade_book_type):
+def add_activity(syllabus: dict[str, dict[str, float]], activity_group: str, activity: str, max_grade: float) -> dict[str, dict[str, float]]:
+    '''
+    Adds a new activity to the syllabus or ignores an existing activity 
+    if the activity group and activity already exist in the syllabus.
+
+    :param syllabus: dict[str, dict[str, float]], The dictionary that contains activity groups 
+        as keys and nested dictionaries as values.
+    :param activity_group: str, The name of the activity group.
+    :param activity: str, The name of activity.
+    :param max_grade: float, The maximum grade for the activity.
+
+    :return: dict[str, dict[str, float]], The result syllabus.
+
+    >>> add_activity({'ПКН23-А': {'Мідтерм 2023': 10}, \
+                      'ПКН24-В': {'treasure': 1}}, \
+                      'ПКН24-Б', 'Tower blocks', 1)
+    {'ПКН23-А': {'Мідтерм 2023': 10}, \
+'ПКН24-В': {'treasure': 1}, \
+'ПКН24-Б': {'Tower blocks': 1}}
+    >>> add_activity({'ПКН23-А': {'Мідтерм 2023': 10}, \
+                      'ПКН24-В': {'treasure': 1}}, \
+                      'ПКН24-В', 'Tower blocks', 1)
+    {'ПКН23-А': {'Мідтерм 2023': 10}, \
+'ПКН24-В': {'treasure': 1, 'Tower blocks': 1}}
+    >>> add_activity({'ПКН23-А': {'Мідтерм 2023': 10}, \
+                      'ПКН24-В': {'treasure': 1}}, \
+                      'ПКН24-В', 'treasure', 0)
+    {'ПКН23-А': {'Мідтерм 2023': 10}, \
+'ПКН24-В': {'treasure': 1}}
+    '''
+    if not activity_group in syllabus:
+        syllabus[activity_group] = {}
+    if not activity in syllabus[activity_group]:
+        syllabus[activity_group][activity] = max_grade
+
+    return syllabus
+
+def write_json(filename: str, data: grade_book_type, syllabus: dict[str, dict[str, float]]):
     """
     Writes the all students' grades json file.
 
@@ -89,9 +134,9 @@ def write_json(filename: str, data: grade_book_type):
     :return: None
     """
 
-    student_grades = get_proper_student_grade(data)
+    student_grades = get_proper_student_grade(data, syllabus)
 
-    with open(filename, "w") as file:
+    with open(filename, "w", encoding="utf-8") as file:
         json.dump(student_grades, file, ensure_ascii=False)
 
 
@@ -154,7 +199,7 @@ def get_grades_from_file(filename: str, grade_book: grade_book_type,
 ('Хто', 'Це', 'hto.pn@ucu.edu.ua', 'ПКН24-Б3'): \
 {'Лабораторні роботи': {'Лабораторна робота 1': None}}}
     """
-    with (open(filename, "r", encoding="utf-8") as file_grade_book):
+    with open(filename, "r", encoding="utf-8") as file_grade_book:
         lines = file_grade_book.readlines()
 
         for line in lines[1:]:
@@ -307,7 +352,7 @@ def del_activity(
             del syllabus[activity_group][activity]
             if not syllabus[activity_group]:
                 del syllabus[activity_group]
-    for student, activities in grade_book.items():
+    for _, activities in grade_book.items():
         if activity_group in activities:
             if activity in activities[activity_group]:
                 del activities[activity_group][activity]
@@ -367,7 +412,7 @@ def mark_transform(grade_book: grade_book_type) -> dict[str, str]:
         student = ""
     return final
 
-def letter_report(letter: str, gradebook) -> list:
+def letter_report(letter: str, gradebook: grade_book_type) -> list:
     '''
     Receives gradebook and letter and builds report of students with particular grade
     :param letter: letter to get students with this mark
@@ -479,7 +524,6 @@ def get_total_by_activity_report(
         grade_book: grade_book_type,
         activity_groups: list[str] = None
 ) -> dict[str, dict[str, float]]:
-    # todo: do we need activity group filter or just to sum for all activities?
     """
     Receives grade book and activity group(s) and builds a report with
     all students' total grade per activity group
@@ -525,6 +569,29 @@ def get_total_by_activity_report(
     return report
 
 
+def add_grade_for_student(grade_book: grade_book_type, syllabus, name: str, surname: str,
+                          email: str, group: str, activity_group: str, activity: str, grade: str):
+    """
+    Put grade for one student
+    :param group: group of student
+    :param email: email of student
+    :param surname: surname of student
+    :param name: name of student
+    :param syllabus: syllabus with activities
+    :param grade_book: grade book
+    :param activity_group: str, activity group
+    :param activity: str, activity
+    :param grade: float, grade
+    :return: None
+    """
+    if not is_activity_correct(syllabus, activity_group, activity):
+        return
+
+    mark = grade_check(grade, syllabus[activity_group][activity])
+
+    grade_book[(surname, name, email, group)].setdefault(activity_group, {})[activity] = mark
+
+
 def introduction(functions_interface: dict[str, tuple[object, int, str]]):
     """
     Returns gradebook introduction
@@ -559,7 +626,8 @@ get_activities (для виклику необхідно 0 додаткових 
 write_json (для виклику необхідно 1 додаткових аргументів): \
 Записує грейдбук у JSON файл. Аргумент - назва файлу.\\n\
 Щоб вийти, введіть Q у будь-який момент.\\n\
-Введіть команду у форматі: назва_команди аргумент_1 аргумент_2\\n'
+Аргументи та команду потрібно розділяти крапкою з комою та пробілом: "; ".\\n\
+Введіть команду у форматі: назва_команди; аргумент_1; аргумент_2; аргумент_3\\n'
     """
     res = "Вітаємо в консольному інтерфейсі Gradebook! Ось перелік доступних команд:\n"
 
@@ -568,7 +636,8 @@ write_json (для виклику необхідно 1 додаткових ар
 {item[1][2] if item[1][2] else "Опис відсутній"}.\n"
 
     res += "Щоб вийти, введіть Q у будь-який момент.\n"
-    res += "Введіть команду у форматі: назва_команди аргумент_1 аргумент_2\n"
+    res += "Аргументи та команду потрібно розділяти крапкою з комою та пробілом: \"; \".\n"
+    res += "Введіть команду у форматі: назва_команди; аргумент_1; аргумент_2; аргумент_3\n"
 
     return res
 
@@ -591,7 +660,7 @@ dict[str, tuple[object, int, str]]) -> tuple[object, list[str]] | None:
         if inp.lower() == "q":
             return None
 
-        parts = [part for part in inp.split(" ") if part]
+        parts = [part for part in inp.split("; ") if part]
 
         if not parts:
             print("Неправильний формат команди.")
@@ -618,14 +687,25 @@ def main():
             "Виводить це повідомлення"
         ),
         "get_activities": (
-            lambda args: print(get_activities(activities)),
+            lambda args: print(get_activities(syllabus)),
             0,
             "Виводить всі активності у форматі (група, активність)"
         ),
         "write_json": (
-            lambda args: write_json(args[0], gradebook),
+            lambda args: write_json(args[0], gradebook, syllabus),
             1,
             "Записує грейдбук у JSON файл. Аргумент - назва файлу"
+        ),
+        "get_grades_from_file": (
+            lambda args: get_grades_from_file(args[0], gradebook, syllabus),
+            1,
+            "Читає оцінки за активності за файлу та записує у grade_book. Аргумент - назва файлу"
+        ),
+        "add_grade_for_student": (
+            lambda args: add_grade_for_student(gradebook, syllabus, *args),
+            1,
+            "Виставляє оцінку студенту. Аргументи - прізвище, ім'я, пошта, група студента, "
+            "група активності, активність, оцінка"
         ),
         "get_mean_by_activity_report": (
             lambda args: pprint(get_mean_by_activity_report(gradebook, args[0].split(','))),
@@ -634,15 +714,19 @@ def main():
             "Аргумент - список активностей (1 або більше) через кому"
         ),
         "get_total_by_activity_report": (
-            lambda args: pprint(get_total_by_activity_report(gradebook, args[0].split(',') if args[0] else activities)),    # empty for all activities
+            lambda args: pprint(get_total_by_activity_report(
+                gradebook,
+                args[0].split(',') if args[0] != "ALL"
+                else [elem[0] for elem in get_activities(syllabus)]
+            )),
             1,
             "Виводить сумарний бал для кожного зі студентів згідно обраних або всіх активностей у форматі (студент: навза активності: сумарний бал).\n"
-            "Аргумент - список активностей (1 або більше) через кому або пустий рядок для всіх активностей"
+            "Аргумент - список груп активностей (1 або більше) через кому або ALL для всіх активностей"
         ),
         "letter_report": (
             lambda args: print(letter_report(args[0], gradebook)),
             1,
-            "Виводить список студентів згідно з оцінкою у вигляді літери"
+            "Виводить список студентів згідно з оцінкою у вигляді літери.\n"
             "Аргумент - літера згідно якої потрібно вивести всіх студентів з такою оцінкою"
         ),
         "stud_grade_book_to_json": (
@@ -650,11 +734,30 @@ def main():
             2,
             "Записує грейдбук для одного студента у JSON файл. Аргумент 1 - назва файлу,\
 (filename.json), аргумент 2 - email студента (email@gmail.com)."
+        ),
+        "add_student": (
+            lambda args: add_student(gradebook, tuple(args)),
+            4,
+            "Додає студента до грейдбуку. Приймає 4 аргументи, приклад вводу, щоб додати студента:\
+ add_student Прізвище; Ім'я; пошта; група"
+        ),
+        "del_activity": (
+            lambda args: del_activity(syllabus, gradebook, args[0], args[1]),
+            2,
+            "Видаляє активність з силабуса та журналу оцінок для кожного студента \
+у форматі (група, активність)"
+        ),
+        "add_activity": (
+            lambda args: add_activity(syllabus, args[0], args[1], float(args[2])),
+            3,
+            "Додає активність в силабус за групою активності, назвою та максимальним балом"
         )
     }
 
-    activities = []
     gradebook = {}
+    syllabus = {'Лабораторні_роботи': {'Лабораторна_робота_1': 2.0, 'Лабораторна_робота 2': 2.0},
+                'Тести': {'Тест_1': 1.0, 'Тест_2': 1.0},
+                'Мідтерм': {'Мідтерм_теорія': 5.0, 'Мідтерм_практика': 15.0}}
 
     functions_interface["help"][0]([])
 
